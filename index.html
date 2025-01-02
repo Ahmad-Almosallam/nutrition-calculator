@@ -54,6 +54,14 @@
     </div>
   </form>
 
+  <div class="mt-4">
+    <h3>Saved Meals:</h3>
+    <ul id="saved-meals-list" class="list-group mb-3">
+      <!-- Saved meals will be listed here -->
+    </ul>
+  </div>
+  
+
   <!-- Calculated Nutrition Section -->
   <div class="mt-4">
     <h3>Calculated Nutrition (Total for All Meals):</h3>
@@ -82,135 +90,186 @@
 
 <script>
   // Default values for 150g
-  const selectedNutrition = {
-    carbs: 50,
-    protein: 30,
-    fat: 50
-  };
+const selectedNutrition = {
+  carbs: 50,
+  protein: 30,
+  fat: 50
+};
 
-  // Function to update the nutrition values based on input
-  function updateNutrition() {
-    const carbsWeight = parseFloat(document.getElementById('carbs-weight').value);
-    const proteinWeight = parseFloat(document.getElementById('protein-weight').value);
-    const fatWeight = parseFloat(document.getElementById('fat-weight').value);
+// Save a meal from the "Meals Added" list to the "Saved Meals" list
+function saveMealFromList(index) {
+  const meals = JSON.parse(localStorage.getItem('meals')) || [];
+  const mealToSave = meals[index];
 
-    selectedNutrition.carbs = parseFloat(document.getElementById("carbs").value);
-    selectedNutrition.protein = parseFloat(document.getElementById("protein").value);
-    selectedNutrition.fat = parseFloat(document.getElementById("fat").value);
+  if (mealToSave) {
+    let savedMeals = JSON.parse(localStorage.getItem('savedMeals')) || [];
+    const existingIndex = savedMeals.findIndex((m) => m.name === mealToSave.name && m.carbs === mealToSave.carbs && m.protein == mealToSave.protein && m.fat == mealToSave.fat);
 
-    // Calculate new values based on entered weight for each macronutrient
-    const carbs = (carbsWeight / 150) * selectedNutrition.carbs;
-    const protein = (proteinWeight / 150) * selectedNutrition.protein;
-    const fat = (fatWeight / 150) * selectedNutrition.fat;
-
-    // Update the displayed individual nutrition values for the current input
-    document.getElementById('calculated-carbs').textContent = `Carbs: ${carbs.toFixed(2)}g`;
-    document.getElementById('calculated-protein').textContent = `Protein: ${protein.toFixed(2)}g`;
-    document.getElementById('calculated-fat').textContent = `Fat: ${fat.toFixed(2)}g`;
-  }
-
-  // Function to add the current meal to local storage and display the meals list
-  function addMeal() {
-    const mealName = document.getElementById('meal-name').value;
-    if (mealName === "") {
-      alert("Please enter a meal name.");
+    if (existingIndex !== -1) {
+      alert("This meal is already saved.");
       return;
     }
 
-    const carbsWeight = parseFloat(document.getElementById('carbs-weight').value);
-    const proteinWeight = parseFloat(document.getElementById('protein-weight').value);
-    const fatWeight = parseFloat(document.getElementById('fat-weight').value);
+    savedMeals.push(mealToSave);
+    localStorage.setItem('savedMeals', JSON.stringify(savedMeals));
 
-    selectedNutrition.carbs = parseFloat(document.getElementById("carbs").value);
-    selectedNutrition.protein = parseFloat(document.getElementById("protein").value);
-    selectedNutrition.fat = parseFloat(document.getElementById("fat").value);
+    // Update the saved meals list display
+    displaySavedMeals();
+  }
+}
 
-    const meal = {
-      name: mealName,
-      carbs: (carbsWeight / 150) * selectedNutrition.carbs,
-      protein: (proteinWeight / 150) * selectedNutrition.protein,
-      fat: (fatWeight / 150) * selectedNutrition.fat
-    };
+// Display the saved meals
+function displaySavedMeals() {
+  const savedMealsList = document.getElementById('saved-meals-list');
+  savedMealsList.innerHTML = "";
 
-    // Get existing meals from local storage
+  const savedMeals = JSON.parse(localStorage.getItem('savedMeals')) || [];
+
+  savedMeals.forEach((meal, index) => {
+    const listItem = document.createElement('li');
+    listItem.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-center');
+    listItem.textContent = `${meal.name} - Carbs: ${meal.carbs.toFixed(2)}g, Protein: ${meal.protein.toFixed(2)}g, Fat: ${meal.fat.toFixed(2)}g`;
+
+    // Add Meal Button
+    const addButton = document.createElement('button');
+    addButton.classList.add('btn', 'btn-success', 'btn-sm');
+    addButton.textContent = 'Add Meal';
+    addButton.onclick = () => addSavedMealToList(index);
+
+    // Delete Saved Meal Button
+    const deleteButton = document.createElement('button');
+    deleteButton.classList.add('btn', 'btn-danger', 'btn-sm');
+    deleteButton.textContent = 'Delete';
+    deleteButton.onclick = () => deleteSavedMeal(index);
+
+    // Append buttons to the list item
+    listItem.appendChild(addButton);
+    listItem.appendChild(deleteButton);
+    savedMealsList.appendChild(listItem);
+  });
+}
+
+// Add a saved meal to the "Meals Added" list
+function addSavedMealToList(index) {
+  const savedMeals = JSON.parse(localStorage.getItem('savedMeals')) || [];
+  const mealToAdd = savedMeals[index];
+
+  if (mealToAdd) {
     let meals = JSON.parse(localStorage.getItem('meals')) || [];
-    meals.push(meal);
-
-    // Save the updated meals back to local storage
+    meals.push(mealToAdd);
     localStorage.setItem('meals', JSON.stringify(meals));
 
-    // Update the meal list display
+    // Update the "Meals Added" list display
     displayMeals();
   }
+}
 
-  // Function to display the list of meals added and recalculate the total nutrition
-  function displayMeals() {
-    const mealList = document.getElementById('meal-list');
-    mealList.innerHTML = "";
+// Delete a saved meal from the "Saved Meals" list
+function deleteSavedMeal(index) {
+  let savedMeals = JSON.parse(localStorage.getItem('savedMeals')) || [];
+  savedMeals.splice(index, 1); // Remove the saved meal at the specified index
+  localStorage.setItem('savedMeals', JSON.stringify(savedMeals));
 
-    // Get meals from local storage
-    const meals = JSON.parse(localStorage.getItem('meals')) || [];
-    let totalCalories = 0;
-    let totalCarbs = 0;
-    let totalProtein = 0;
-    let totalFat = 0;
+  // Update the saved meals list display
+  displaySavedMeals();
+}
 
-    meals.forEach((meal, index) => {
-      const listItem = document.createElement('li');
-      listItem.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-center');
-      listItem.textContent = `${meal.name} - Carbs: ${meal.carbs.toFixed(2)}g, Protein: ${meal.protein.toFixed(2)}g, Fat: ${meal.fat.toFixed(2)}g`;
-
-      // Create delete button for each meal
-      const deleteButton = document.createElement('button');
-      deleteButton.classList.add('btn', 'btn-danger', 'btn-sm');
-      deleteButton.textContent = 'Delete';
-      deleteButton.onclick = () => deleteMeal(index);
-
-      listItem.appendChild(deleteButton);
-      mealList.appendChild(listItem);
-
-      // Calculate total calories (4 calories per g of carbs and protein, 9 calories per g of fat)
-      totalCarbs += meal.carbs;
-      totalProtein += meal.protein;
-      totalFat += meal.fat;
-      totalCalories += (meal.carbs * 4) + (meal.protein * 4) + (meal.fat * 9);
-    });
-
-    // Update the total nutrition and calories display
-    document.getElementById('calculated-carbs').textContent = `Carbs: ${totalCarbs.toFixed(2)}g`;
-    document.getElementById('calculated-protein').textContent = `Protein: ${totalProtein.toFixed(2)}g`;
-    document.getElementById('calculated-fat').textContent = `Fat: ${totalFat.toFixed(2)}g`;
-    document.getElementById('total-calories').textContent = `Total Calories: ${totalCalories} kcal`;
+// Function to add a new meal to the "Meals Added" list
+function addMeal() {
+  const mealName = document.getElementById('meal-name').value;
+  if (mealName === "") {
+    alert("Please enter a meal name.");
+    return;
   }
 
-  // Function to delete a single meal from local storage
-  function deleteMeal(index) {
-    let meals = JSON.parse(localStorage.getItem('meals')) || [];
-    meals.splice(index, 1); // Remove the meal at the specified index
+  const carbsWeight = parseFloat(document.getElementById('carbs-weight').value);
+  const proteinWeight = parseFloat(document.getElementById('protein-weight').value);
+  const fatWeight = parseFloat(document.getElementById('fat-weight').value);
 
-    // Save the updated meals list to local storage
-    localStorage.setItem('meals', JSON.stringify(meals));
+  selectedNutrition.carbs = parseFloat(document.getElementById("carbs").value);
+  selectedNutrition.protein = parseFloat(document.getElementById("protein").value);
+  selectedNutrition.fat = parseFloat(document.getElementById("fat").value);
 
-    // Update the meal list display
-    displayMeals();
-  }
-
-  // Function to delete all meals from local storage
-  function deleteAllMeals() {
-    localStorage.removeItem('meals');
-    displayMeals();
-  }
-
-  // Listen for changes in the form and update nutrition in real-time
-  document.getElementById('nutrition-form').addEventListener('input', updateNutrition);
-
-  // Initialize the page with stored meals (if any)
-  window.onload = function() {
-    displayMeals(); // Recalculate nutrition when page loads
+  const meal = {
+    name: mealName,
+    carbs: (carbsWeight / 150) * selectedNutrition.carbs,
+    protein: (proteinWeight / 150) * selectedNutrition.protein,
+    fat: (fatWeight / 150) * selectedNutrition.fat
   };
 
-  // Initialize nutrition calculation for a new meal form
-  updateNutrition();
+  let meals = JSON.parse(localStorage.getItem('meals')) || [];
+  meals.push(meal);
+  localStorage.setItem('meals', JSON.stringify(meals));
+
+  displayMeals();
+}
+
+// Display the "Meals Added" list and recalculate totals
+function displayMeals() {
+  const mealList = document.getElementById('meal-list');
+  mealList.innerHTML = "";
+
+  const meals = JSON.parse(localStorage.getItem('meals')) || [];
+  let totalCalories = 0;
+  let totalCarbs = 0;
+  let totalProtein = 0;
+  let totalFat = 0;
+
+  meals.forEach((meal, index) => {
+    const listItem = document.createElement('li');
+    listItem.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-center');
+    listItem.textContent = `${meal.name} - Carbs: ${meal.carbs.toFixed(2)}g, Protein: ${meal.protein.toFixed(2)}g, Fat: ${meal.fat.toFixed(2)}g`;
+
+    // Delete Button
+    const deleteButton = document.createElement('button');
+    deleteButton.classList.add('btn', 'btn-danger', 'btn-sm', 'me-2');
+    deleteButton.textContent = 'Delete';
+    deleteButton.onclick = () => deleteMeal(index);
+
+    // Save Button
+    const saveButton = document.createElement('button');
+    saveButton.classList.add('btn', 'btn-secondary', 'btn-sm');
+    saveButton.textContent = 'Save Meal';
+    saveButton.onclick = () => saveMealFromList(index);
+
+    listItem.appendChild(saveButton);
+    listItem.appendChild(deleteButton);
+    mealList.appendChild(listItem);
+
+    // Calculate totals
+    totalCarbs += meal.carbs;
+    totalProtein += meal.protein;
+    totalFat += meal.fat;
+    totalCalories += (meal.carbs * 4) + (meal.protein * 4) + (meal.fat * 9);
+  });
+
+  // Update totals
+  document.getElementById('calculated-carbs').textContent = `Carbs: ${totalCarbs.toFixed(2)}g`;
+  document.getElementById('calculated-protein').textContent = `Protein: ${totalProtein.toFixed(2)}g`;
+  document.getElementById('calculated-fat').textContent = `Fat: ${totalFat.toFixed(2)}g`;
+  document.getElementById('total-calories').textContent = `Total Calories: ${totalCalories.toFixed(2)} kcal`;
+}
+
+// Delete a single meal from the "Meals Added" list
+function deleteMeal(index) {
+  let meals = JSON.parse(localStorage.getItem('meals')) || [];
+  meals.splice(index, 1);
+  localStorage.setItem('meals', JSON.stringify(meals));
+  displayMeals();
+}
+
+// Delete all meals from the "Meals Added" list
+function deleteAllMeals() {
+  localStorage.removeItem('meals');
+  displayMeals();
+}
+
+// Initialize the page with stored meals and saved meals
+window.onload = function () {
+  displayMeals(); // Display the "Meals Added" list
+  displaySavedMeals(); // Display the "Saved Meals" list
+};
+
 </script>
 
 </body>
